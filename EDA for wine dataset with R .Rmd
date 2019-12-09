@@ -1,0 +1,552 @@
+---
+title: "EDA for wine dataset with R"
+author: "Bill"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+html_document: default
+pdf_document: default
+---
+
+========================================================
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using in your analysis in this code
+# chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+
+library(ggplot2)
+library(gridExtra)
+library(tidyr)
+library(reshape2)
+library(dplyr)
+
+# knitr: Supress code/message/warnings
+#   Set default plot options and center them
+knitr::opts_chunk$set(fig.width = 9, fig.height = 5, fig.path = 'Figs/',
+                      fig.align = "center", tidy = TRUE,
+                      echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+wine <- read.csv("wineQualityReds.csv")
+dim(wine)
+str(wine)
+head(wine)
+```
+```{r echo=FALSE}
+summary(wine)
+```
+
+
+```{r echo=FALSE, Univariate_Plots1}
+# histogram of quality
+ggplot(aes(quality), data = wine)+
+  geom_histogram(binwidth = 1, color="white")+
+  scale_x_continuous(breaks = seq(1, 10, 1))
+```
+
+```{r echo=FALSE}
+summary(wine$quality)
+```
+
+```{r echo=FALSE}
+table(wine$quality)
+```
+
+The highest quality is 8, the lowest is 3. Qualities of 5 & 6 occur more often than the other, quality of 7 comes after.
+
+```{r echo=FALSE, Univariate_Plots2}
+# histogram of alcohol
+ggplot(aes(alcohol), data = wine)+
+  geom_histogram(binwidth = 0.1)+
+  scale_x_continuous(breaks = seq(8, 15, 1))
+```
+
+```{r echo=FALSE}
+summary(wine$alcohol)
+```
+
+The highest alcohol is 14.90, and the lowest one is 8.40, with the peak count of around 9.5, it's a right skewed distribution.
+
+```{r echo=FALSE, Univariate_Plots3}
+# histogram of density
+ggplot(aes(density), data=wine)+
+  geom_histogram()
+```
+
+```{r echo=FALSE}
+summary(wine$density)
+```
+
+The highest density is 1.0037, and the lowest one is 0.9901. The peak count is the one of around 0.9975, it's roughly a normal distribution.
+
+# Univariate Analysis
+
+
+### What is the structure of your dataset?
+```{r echo=FALSE}
+str(wine)
+```
+
+The dataset contains 1599 obs and 13 variables.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+I want to investigate which chemical properties influence the quality of red wines, therefore, quality is the main feature of interest. Other chemical properties are also very important.
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+
+Most of the chemical properties would affect the quality, or at least have some weak correlations with the quality.
+
+### Did you create any new variables from existing variables in the dataset?
+
+Not yet, I will create the conditional means variables for other chemical properties with quality in the next section.
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+
+About the alcohol, it's a right skewed distribution.
+
+# Bivariate Plots Section
+
+
+```{r echo=FALSE, Bivariate_Plots1}
+# scatterplot(jittered) - fixed acidity and quality
+ggplot(aes(fixed.acidity, quality), data = wine)+
+  geom_jitter(height = 0.35, width = 0)+
+  geom_smooth(method = "lm", color="red")
+
+cor.test(wine$fixed.acidity, wine$quality)
+```
+
+Creat a scatterplot for fixed.acidity and quality, it seems that there is not a stong relationship between them according to the regression line. Also, because the quality is displayed as integer, this graph does not show the continuity of the change. So it's better to get the conditional means of the quality by the fixed.acidity and plot the geom_line.
+
+```{r echo=FALSE, Bivariate_Plots2}
+# scatterplot(jittered) - fixed acidity and quality, with mean values
+ggplot(aes(fixed.acidity, quality), data = wine)+
+  geom_jitter(height = 0.35, width = 0, color="darkgrey")+
+  geom_point(stat = "summary", fun.y = "mean", shape = 23, size = 3, fill = "blue")+
+  geom_smooth(method = "lm", color = "red")
+```
+
+Plot the scatterplot of the mean values of quality for every specific value of fixed acidity.
+
+```{r echo=FALSE, Bivariate_Plots3}
+# scatterplot(jittered) - density and quality
+ggplot(aes(density, quality), data = wine)+
+  geom_jitter(height = 0.35, width = 0)+
+  geom_smooth(method = "lm", color = "red")+
+  geom_smooth()
+
+```
+
+```{r echo=FALSE, Bivariate_Plots4}
+cor.test(wine$density, wine$quality)
+```
+
+Create the scatterplot for density and quality, there is a weak negative correlation between them.
+
+```{r echo=FALSE, Bivariate_Plots5}
+# scatterplot(jittered) - density and quality, with mean values
+ggplot(aes(density, quality), data = wine)+
+  geom_jitter(height = 0.35, width = 0, color="darkgrey")+
+  geom_point(stat = "summary", fun.y = "mean", alpha=1/2, shape = 23, size = 3, fill = "blue")+
+  geom_smooth(method = "lm", color = "red")+
+  geom_smooth()
+
+```
+
+Create the scatterplot for the conditional means of quality by density, also, a weak negative correlation between them. It can be seen from the loess that there is a weak neagtive correlation at first, then after the density of 0.9975, there is a slightly positive correlation.
+
+```{r echo=FALSE, Bivariate_Plots6}
+# scatterplot(jittered) - pH and quality
+qplot(pH, quality, data=wine, geom = "jitter")+
+  geom_smooth()
+
+cor.test(wine$pH, wine$quality)
+```
+
+Weak correlation between pH and quality
+
+```{r echo=FALSE, Bivariate_Plots7}
+# scatterplot(jittered) - alcohol and quality
+qplot(alcohol, quality, data = wine, geom = "jitter")+
+  geom_smooth()+
+  geom_smooth(method="lm", color="red")
+
+cor.test(wine$alcohol, wine$quality)
+```
+
+It seems that there is a medium positive correlation between the two variables regarding its 0.48 efficiency. Check the conditional means of quality by alcohol in the next step.
+
+```{r echo=FALSE, Bivariate_Plots8}
+# conditional means of quality by alcohol
+quality_alcohol <- wine %>%
+  group_by(alcohol) %>%
+  summarise(quality_mean = mean(quality),
+            n=n())
+
+qplot(alcohol, quality_mean, data = quality_alcohol)+
+  geom_smooth(method = "lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(quality_alcohol$quality_mean, quality_alcohol$alcohol)
+```
+
+The graph shows that there is a medium positive correlation between the two variables, however, the loess indicates a converse trend above the alcohol of 14, which is mainly caused by outliners. Remove those outliners to check the loess again in the next step.
+
+```{r echo=FALSE, Bivariate_Plots9, warning=FALSE}
+# remove the outliners
+qplot(alcohol, quality_mean, data = quality_alcohol)+
+  xlim(8,14)+
+  geom_smooth(method = "lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+  
+```
+
+After removing those outliners, the loess shows no negative correlation between the two variables. We can say that the alcohol would affect the quality by a medium positive effect. But, if the alcohol concentration is too high, such as above 14, it would affect the quality a little bit.
+
+```{r echo=FALSE, Bivariate_Plots10}
+# scatterplot(jittered) - sulphates and quality
+qplot(sulphates, quality, data = wine, geom = "jitter")+
+  geom_smooth(method = "lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$sulphates, wine$quality)
+```
+
+A weak positive correlation
+
+```{r echo=FALSE, Bivariate_Plots11}
+# scatterplot(jittered) - volatile.acidity and quality
+qplot(volatile.acidity, quality, data = wine, geom = "jitter")+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$volatile.acidity, wine$quality)
+```
+
+Medium negative correlation between volatile.acidity and quality, check the conditional means of quality by volatile.acidity in the next step
+
+```{r echo=FALSE, Bivariate_Plots12}
+# conditional means of quality by volatile_quality
+volatile_quality <- wine %>%
+  group_by(volatile.acidity) %>%
+  summarise(quality_mean = mean(quality),
+            n=n())
+
+qplot(volatile.acidity, quality_mean, data = volatile_quality, geom = "jitter")+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+with(volatile_quality, cor.test(volatile.acidity, quality_mean))
+```
+
+Medium negative correlation between the two variables can also be indicated.
+
+```{r echo=FALSE, Bivariate_Plots13}
+# scatterplot(jittered) - citric.acid and quality
+qplot(citric.acid, quality, data = wine, geom = "jitter")+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$citric.acid, wine$quality)
+```
+
+weak correlation
+
+```{r echo=FALSE, Bivariate_Plots14}
+# scatterplot(jittered) - residual.sugar and quality
+qplot(residual.sugar, quality, data = wine, geom = "jitter")+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$residual.sugar, wine$quality)
+```
+
+weak correlation
+
+```{r echo=FALSE, Bivariate_Plots15}
+# scatterplot(jittered) - chlorides and quality
+ggplot(aes(chlorides, quality), data = wine)+
+  geom_jitter(height = 0.35, width = 0)+
+  scale_x_continuous(breaks = seq(0.0,0.6, 0.05) )+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$chlorides, wine$quality)
+```
+
+weak negative correlation
+
+```{r echo=FALSE, Bivariate_Plots16}
+# scatterplot(jittered) - free.sulfur.dioxide and quality
+qplot(free.sulfur.dioxide, quality, data = wine, geom = "jitter")+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$free.sulfur.dioxide, wine$quality)
+```
+
+weak correlation
+
+
+```{r echo=FALSE, Bivariate_Plots17, warning=FALSE}
+# scatterplot(jittered) - total.sulfur.dioxide and quality
+qplot(total.sulfur.dioxide, quality, data = wine, geom = "jitter")+
+  xlim(0,200)+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$total.sulfur.dioxide, wine$quality)
+```
+
+weak correlation
+
+```{r echo=FALSE, Bivariate_Plots18, warning=FALSE}
+# scatterplot(jittered) - sulphates and quality
+qplot(sulphates , quality, data = wine, geom = "jitter")+
+  xlim(0, 1.5)+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$sulphates , wine$quality)
+```
+
+A weak positive correlation, however, according to the loess, there is lightly negative correlation after 0.75 of sulphates. Perhaps because of insufficient data.
+
+```{r echo=FALSE, Bivariate_Plots19, warning=FALSE}
+# scatterplot - total.sulfur.dioxide and free.sulfur.dioxide
+qplot(total.sulfur.dioxide , free.sulfur.dioxide, data = wine)+
+  xlim(0,200)+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+with(subset(wine, total.sulfur.dioxide<200), 
+     cor.test(total.sulfur.dioxide , free.sulfur.dioxide))
+```
+
+There is a medium positive correlation between total sulfur dioxide and free sulfur dioxide, probably because total sulfur dioxide contains free sulfur dioxide, just different proportions in different wines.
+
+```{r echo=FALSE, Bivariate_Plots20}
+# scatterplot - pH and density
+qplot(pH, density, data = wine)+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")
+
+cor.test(wine$pH, wine$density)
+```
+
+There is a meidum negative correlation between pH and density.
+
+### Chemical distribution analysis under different quality grades
+
+```{r echo=FALSE}
+# divide grades into three groups
+wine$quality.bucket <- cut(wine$quality, c(2,4,6,8),
+                           labels = c("Low", "Medium", "High"))
+summary(wine$quality.bucket)
+```
+
+I divide the grades into three groups, grade 3, 4 as "low", grade 5, 6 as "medium", grade 7, 8 as "high". Since alcohol and volatile acidity are the two features influcing the quality most, I will do distribution analysis on this two.
+
+```{r echo=FALSE, Bivariate_Plots21}
+# geom_density - alcohol, quality.bucket
+ggplot(wine, aes(x=alcohol, fill=quality.bucket)) +
+      geom_density(aes(y=..density..), 
+                  alpha=.5, position="identity")
+```
+
+We can see from that higher the quality, higher the alcohol, the center of the distiribution moves to the right.
+
+```{r echo=FALSE, Bivariate_Plots22}
+# geom_density - volatile.acidity, quality.bucket
+ggplot(wine, aes(x=volatile.acidity, fill=quality.bucket)) +
+      geom_density(aes(y=..density..),
+      alpha=.5, position="identity")
+```
+
+We can see from that higher the quality, lower the volatile.acidity, the center of the distiribution moves to the left.
+
+# Bivariate Analysis
+
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+Positive correlation with quality:
+1. fixed.acidity  cor 0.1240516  weak
+2. sulphates  cor 0.2513971 weak
+3. citric acidity  cor 0.2263725 weak
+4. residual sugar  cor 0.01373164 weak
+5.alcohol  cor 0.4761663 medium
+
+Negative correlation with quality:
+1. density  cor -0.1749192 weak
+2. ph  cor -0.05773139 weak
+3. volatile acidity  cor -0.3905578 medium
+4. chlorides  cor -0.1289066 weak
+5. free sulfur dixiode  cor -0.05065606 weak
+6. total sulfur dixiode  cor -0.1851003 weak
+
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+
+1. free sulphur dixiode and total sulphur dixiode have a medium positive correlation, mainly because total sulphur dixiode contains free sulphur dixiode
+
+2. A meidum negative correlation between pH and density.
+
+### What was the strongest relationship you found?
+
+So far, the strongest relationship is between alcohol and quality. Except the observation for the main features, relationship between free sulphur dixiode and total sulphur dixiode is the strongest.
+
+# Multivariate Plots Section
+
+
+```{r echo=FALSE, Multivariate_Plots1}
+# scatterplot - alcohol, quality, volatile.acidity
+ ggplot(wine, aes(y=alcohol,x=quality,
+                      color = volatile.acidity) )+
+        geom_point(alpha=1/4, size=2.5)+
+        scale_colour_gradient2(low="red", 
+                               high="blue", mid="#842daf", midpoint = 0.8)
+```
+
+We can add another dimension into the graph using different colors, alcohol and volatile.acidity are the two features affecting the quality most. We can see from that since the quality are discrete numbers, it is a little bit over-plotted.
+
+```{r echo=FALSE, Multivariate_Plots2}
+# scatterplot(jittered) - alcohol, quality, volatile.acidity
+  ggplot(wine, aes(y=alcohol,x=quality,color = volatile.acidity) )+
+        geom_jitter(alpha=1/2, size=2.5)+
+        xlab("quality") + ylab("alcohol") +
+        scale_colour_gradient2(low="red", high="blue",
+                               mid="#842daf",midpoint = 0.8)
+```
+
+
+Using the jitter plot seems to make it better. It can be seen from that higher quality will have higher alcohol and lower volatile.acidity.
+
+```{r echo=FALSE, Multivariate_Plots3}
+# scatterplot - Alcohol and Volatile Acidity, by quality levels
+ggplot(wine, aes(x=alcohol, y=volatile.acidity))+
+  geom_point(aes(color = as.factor(quality)), alpha=1/2)+
+  geom_smooth(method = "lm")+
+  geom_smooth(method = "loess", color="red")+
+  scale_color_brewer(palette = "RdYlBu", name="Quality", direction=-1)
+  
+```
+
+```{r echo=FALSE}
+cor.test(wine$volatile.acidity, wine$alcohol)
+```
+
+It can be seen from that higher alcohol has higher quality, and higher volatile.acidity has lower quality. Alcohol and volatile acidity have a relatively weak negative correlatin.
+
+```{r echo=FALSE, Multivariate_Plots4}
+ggplot(wine, aes(x=alcohol, y=density))+
+  geom_point(aes(color = as.factor(quality)), alpha=1/2)+
+  geom_smooth(method = "lm")+
+  geom_smooth(method = "loess", color="red")+
+  scale_color_brewer(palette = "RdYlBu", name="Quality", direction=-1)
+```
+
+```{r echo=FALSE}
+cor.test(wine$density, wine$alcohol)
+```
+
+Alcohol and density have a medium negative correlation, and a higher quality has a higher negative coorelation between them.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+For the top two features affecting the quality, a higher alcohol has a a higher quality and a higher volatile acidity has a lower quality.
+
+### Were there any interesting or surprising interactions between features?
+
+A higher alcohol will have a lower density. Higher the quality, higher the negative correlation between them.
+
+
+------
+
+# Final Plots and Summary
+
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+# histogram of quality
+ggplot(aes(quality), data = wine)+
+ geom_histogram(binwidth = 1, color="white", fill="blue")+
+  scale_x_continuous(breaks = seq(1, 10, 1))+
+  xlab("wine quality")+ylab("count")+
+  ggtitle("Distribution of Wine Quality")
+
+```
+
+This graph shows the distribution of wine grades. Grades 5 & 6 have the highest counts which are all above 600 in this sample. Grade 3 has the lowest count.
+
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+# scatterplot(jittered) - alcohol, quality
+ggplot(aes(alcohol , quality), data = wine)+
+  ylab("wine quality")+
+  xlab("Alcohol (% by Volume)")+
+  geom_jitter(alpha=1/4, color="red", size=2.5)+
+  geom_smooth(method="lm", color="red")+
+  geom_smooth(method="loess", color="blue")+
+  ggtitle("Alcohol vs Wine Quality")
+
+```
+
+Alcohol and wine quality has a medium positive correlation which is the highest among all those features.
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three, warning=FALSE, message=FALSE}
+# scatterplot(jittered) - alcohol, volatile.acidity,  quality
+  ggplot(wine, aes(y=alcohol,x=volatile.acidity,color = quality ) )+
+        geom_jitter(aes(color=as.factor(quality), alpha=1/4))+
+        xlim(c(0,1.2))+
+        xlab(expression(Volatile~Acidity~(g/dm^{3}))) + 
+        ylab("Alcohol (% by Volume)") +
+        ggtitle("Volatile Acidity and Alcohol")+
+        geom_smooth()+
+        geom_smooth(method="lm", color="red")+
+        scale_color_brewer(palette = "RdYlBu", name="Quality", direction=-1)
+
+```
+
+This graph shows the relationship between alcohol and volatile acidity, and both of them's relationship with quality. It can be seen from that there is a negative correlation between them, and also a higher alcohol has a higher quality, a higher volatile.acidity has a lower quality. 
+
+------
+
+# Reflection 
+
+This original dataset contains 1599 obsevations and 11 variables of the chemical features. I am interested in which chemical features affecting the wine quality most. Number one is the alcohol, wines with a high concentration of alcohol tend to have a high quailty. Then, it's the volatile acidity, it affects the quality in an converse way. However, other features don't have strong correlation with the quality.
+Surprisingly, Alcohol and density have a medium negative correlation, and a higher quality has a higher negative coorelation between them.
+I can make future improvement through creating different models to analyse those chemical features, such as linear regression and decision tree.
+
+### Reference
+
+[1] https://www.rdocumentation.org/packages/ggplot2/versions/1.0.0/topics/scale_colour_gradient2
+[2] http://en.wikipedia.org/wiki/Wine_fault
+[3] https://www.rdocumentation.org/search?q=ggplot2&latest=1
